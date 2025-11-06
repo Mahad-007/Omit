@@ -3,7 +3,7 @@ import { Shield, CheckSquare, Sparkles, TrendingUp, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const productivityData = [
   { time: "9 AM", saved: 0.3, wasted: 0.1 },
@@ -52,42 +52,32 @@ export default function Dashboard() {
 
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={productivityData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis 
-                    dataKey="time" 
-                    className="text-xs"
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <YAxis 
-                    className="text-xs"
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
-                  />
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Time Saved", value: totalSaved },
+                      { name: "Time Wasted", value: totalWasted }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value.toFixed(1)}h`}
+                  >
+                    <Cell fill="hsl(var(--success))" />
+                    <Cell fill="hsl(var(--destructive))" />
+                  </Pie>
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
                     }}
+                    formatter={(value: number) => `${value.toFixed(1)}h`}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="saved" 
-                    stroke="hsl(var(--success))" 
-                    fill="hsl(var(--success) / 0.2)" 
-                    strokeWidth={2}
-                    name="Time Saved"
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="wasted" 
-                    stroke="hsl(var(--destructive))" 
-                    fill="hsl(var(--destructive) / 0.2)" 
-                    strokeWidth={2}
-                    name="Time Wasted"
-                  />
-                </AreaChart>
+                </PieChart>
               </ResponsiveContainer>
             </div>
 
