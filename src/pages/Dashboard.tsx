@@ -64,6 +64,9 @@ export default function Dashboard() {
                     outerRadius={100}
                     paddingAngle={5}
                     dataKey="value"
+                    animationBegin={0}
+                    animationDuration={800}
+                    animationEasing="ease-out"
                   >
                     <Cell fill="hsl(var(--success))" />
                     <Cell fill="hsl(var(--destructive))" />
