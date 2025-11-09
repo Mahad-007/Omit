@@ -96,6 +96,13 @@ export default {
       boxShadow: {
         "soft": "var(--shadow-soft)",
         "card": "var(--shadow-card)",
+        "elevated": "var(--shadow-elevated)",
+        "glow": "var(--shadow-glow)",
+      },
+      backgroundImage: {
+        "gradient-card": "var(--gradient-card)",
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-accent": "var(--gradient-accent)",
       },
       fontFamily: {
         sans: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],

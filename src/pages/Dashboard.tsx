@@ -31,22 +31,26 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Focus Time Section - Left Half */}
-        <Card className="lg:row-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Focus Time Tracker
+        <Card className="lg:row-span-2 shadow-elevated bg-gradient-to-br from-card to-accent/20 border-primary/10">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Clock className="h-6 w-6 text-primary" />
+              </div>
+              <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                Focus Time Tracker
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="text-5xl font-bold text-success">{totalSaved.toFixed(1)}h</div>
-                <p className="text-sm text-muted-foreground">Time Saved</p>
+            <div className="space-y-6 text-center">
+              <div className="space-y-3 p-6 rounded-xl bg-gradient-accent border border-success/20 shadow-soft">
+                <div className="text-6xl font-bold text-success drop-shadow-sm">{totalSaved.toFixed(1)}h</div>
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Time Saved</p>
               </div>
-              <div className="space-y-2 opacity-60">
-                <div className="text-3xl font-bold text-destructive">{totalWasted.toFixed(1)}h</div>
-                <p className="text-sm text-muted-foreground">Time Wasted</p>
+              <div className="space-y-3 opacity-60 p-4 rounded-xl bg-card/50 border border-border/50">
+                <div className="text-3xl font-semibold text-destructive">{totalWasted.toFixed(1)}h</div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Time Wasted</p>
               </div>
             </div>
 
@@ -89,18 +93,18 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-foreground">87%</div>
-                <div className="text-xs text-muted-foreground">Efficiency</div>
+            <div className="grid grid-cols-3 gap-4 pt-6 mt-2 border-t border-border/50">
+              <div className="text-center p-3 rounded-lg bg-accent/30 hover:bg-accent/50 transition-colors">
+                <div className="text-2xl font-bold text-primary">87%</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Efficiency</div>
               </div>
-              <div className="text-center">
+              <div className="text-center p-3 rounded-lg bg-accent/30 hover:bg-accent/50 transition-colors">
                 <div className="text-2xl font-bold text-foreground">6</div>
-                <div className="text-xs text-muted-foreground">Sessions</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Sessions</div>
               </div>
-              <div className="text-center">
+              <div className="text-center p-3 rounded-lg bg-accent/30 hover:bg-accent/50 transition-colors">
                 <div className="text-2xl font-bold text-foreground">45m</div>
-                <div className="text-xs text-muted-foreground">Avg Session</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Avg Session</div>
               </div>
             </div>
           </CardContent>
