@@ -12,6 +12,14 @@ const platforms = [
   { id: "twitter", name: "Twitter", color: "bg-blue-400" },
   { id: "tiktok", name: "TikTok", color: "bg-black" },
   { id: "facebook", name: "Facebook", color: "bg-blue-600" },
+  { id: "reddit", name: "Reddit", color: "bg-orange-500" },
+  { id: "linkedin", name: "LinkedIn", color: "bg-blue-700" },
+  { id: "twitch", name: "Twitch", color: "bg-purple-600" },
+  { id: "discord", name: "Discord", color: "bg-indigo-600" },
+  { id: "netflix", name: "Netflix", color: "bg-red-600" },
+  { id: "snapchat", name: "Snapchat", color: "bg-yellow-400" },
+  { id: "pinterest", name: "Pinterest", color: "bg-red-700" },
+  { id: "whatsapp", name: "WhatsApp", color: "bg-green-500" },
 ];
 
 export default function SocialBlocker() {
