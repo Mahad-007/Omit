@@ -225,9 +225,9 @@ export default function SocialBlocker() {
             </div>
           </DashboardCard>
 
-          <div className="bg-gradient-accent rounded-lg p-6 text-white">
-            <p className="text-sm font-medium mb-2">💡 Pro Tip</p>
-            <p className="text-xs opacity-90">
+          <div className="bg-primary rounded-lg p-6">
+            <p className="text-sm font-medium mb-2 text-primary-foreground">💡 Pro Tip</p>
+            <p className="text-xs text-primary-foreground/90">
               Start with shorter sessions and gradually increase the duration to build your focus muscle!
             </p>
           </div>
