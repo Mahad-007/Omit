@@ -47,7 +47,7 @@ export function Header() {
           <p className="text-xs text-muted-foreground">Let's stay focused today</p>
         </div>
         <Avatar>
-          <AvatarFallback className="bg-gradient-primary text-white">U</AvatarFallback>
+          <AvatarFallback className="bg-gradient-primary text-primary-foreground">U</AvatarFallback>
         </Avatar>
       </div>
     </header>

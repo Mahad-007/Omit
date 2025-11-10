@@ -70,12 +70,12 @@ export default function Motivation() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardCard title="Daily Quote" icon={Sparkles}>
-          <div className="bg-gradient-primary rounded-lg p-8 text-white min-h-[200px] flex flex-col justify-between">
+          <div className="bg-gradient-primary rounded-lg p-8 min-h-[200px] flex flex-col justify-between">
             <div>
-              <p className="text-xl font-medium mb-4 leading-relaxed">
+              <p className="text-xl font-medium mb-4 leading-relaxed text-primary-foreground">
                 "{quotes[currentQuote].text}"
               </p>
-              <p className="text-sm opacity-90">— {quotes[currentQuote].author}</p>
+              <p className="text-sm text-primary-foreground/90">— {quotes[currentQuote].author}</p>
             </div>
           </div>
           <Button
