@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Settings button
   settingsBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: 'http://localhost:8080/blocker' });
+    chrome.tabs.create({ url: 'http://localhost:5173/blocker' });
   });
 });
 

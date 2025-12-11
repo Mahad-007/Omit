@@ -1,62 +1,46 @@
 // Helper functions to sync with the browser extension
 
-export async function syncWithExtension(userId: string, focusModeActive: boolean) {
-  // Try to send message to extension
-  // Note: Extension ID will be different for each installation
-  // We'll use chrome.runtime.sendMessage with a wildcard approach
+export async function syncWithExtension(userId: string, focusModeActive: boolean, accessToken?: string) {
+  // Use window.postMessage to communicate with content script
+  // which will relay to background script
+  // This is more reliable than chrome.runtime.sendMessage because we don't need to know the extension ID
   
-  if (typeof chrome === 'undefined' || !chrome.runtime) {
-    return { success: false, error: 'Extension not detected' };
-  }
-
   try {
-    // Store user ID and focus mode in extension storage
-    // The extension will listen for these messages
-    chrome.runtime.sendMessage(
-      { 
+    // Send user ID and token
+    window.postMessage({
+      type: 'FOCUS_SPHERE_SYNC',
+      payload: { 
         action: 'setUserId', 
-        userId 
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('Extension communication error:', chrome.runtime.lastError);
-          return { success: false, error: chrome.runtime.lastError.message };
-        }
+        userId,
+        accessToken
       }
-    );
+    }, '*');
 
-    chrome.runtime.sendMessage(
-      { 
+    // Send focus mode status
+    window.postMessage({
+      type: 'FOCUS_SPHERE_SYNC',
+      payload: { 
         action: 'setFocusMode', 
         active: focusModeActive 
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('Extension communication error:', chrome.runtime.lastError);
-          return { success: false, error: chrome.runtime.lastError.message };
-        }
       }
-    );
+    }, '*');
 
     // Trigger sync
-    chrome.runtime.sendMessage(
-      { action: 'sync' },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('Extension communication error:', chrome.runtime.lastError);
-          return { success: false, error: chrome.runtime.lastError.message };
-        }
-        return { success: true };
-      }
-    );
+    window.postMessage({
+      type: 'FOCUS_SPHERE_SYNC',
+      payload: { action: 'sync' }
+    }, '*');
 
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return { success: false, error: errorMessage };
   }
 }
 
 export function isExtensionInstalled(): boolean {
+  // We can't easily detect if the content script is running
+  // But we can check if chrome runtime is available (sometimes)
+  // or just assume it is if we are here
   return typeof chrome !== 'undefined' && !!chrome.runtime;
 }
-

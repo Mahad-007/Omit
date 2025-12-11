@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { syncWithExtension as syncWithExtensionHelper } from "@/lib/extension-sync";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +30,7 @@ interface BlockedApp {
 }
 
 export default function SocialBlocker() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [apps, setApps] = useState<BlockedApp[]>([]);
   const [duration, setDuration] = useState(60);
   const [focusModeActive, setFocusModeActive] = useState(false);
@@ -50,9 +51,13 @@ export default function SocialBlocker() {
       localStorage.setItem('focussphere_user_id', user.id);
       localStorage.setItem('focussphere_sync', JSON.stringify({
         userId: user.id,
+        accessToken: session?.access_token,
         focusMode: focusModeActive,
         timestamp: Date.now()
       }));
+      
+      // Also trigger push sync
+      syncWithExtensionHelper(user.id, focusModeActive, session?.access_token);
     }
   }, [user]);
 
@@ -70,7 +75,7 @@ export default function SocialBlocker() {
         .eq("user_id", user.id);
 
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error ending session:", error);
     }
   };
@@ -126,7 +131,7 @@ export default function SocialBlocker() {
       }));
 
       setApps(formattedApps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching apps:", error);
       toast.error("Failed to load blocked apps");
     } finally {
@@ -166,7 +171,7 @@ export default function SocialBlocker() {
           await endSession(data.id);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error checking active session:", error);
     }
   };
@@ -210,7 +215,7 @@ export default function SocialBlocker() {
       setNewAppUrl("");
       setIsDialogOpen(false);
       toast.success(`${newAppName} added to the list`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding app:", error);
       toast.error("Failed to add app");
     }
@@ -232,7 +237,7 @@ export default function SocialBlocker() {
 
       setApps((prev) => prev.filter((app) => app.id !== id));
       toast.success(`${app?.name} removed from the list`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error removing app:", error);
       toast.error("Failed to remove app");
     }
@@ -258,7 +263,7 @@ export default function SocialBlocker() {
           app.id === id ? { ...app, blocked: newBlockedState } : app
         )
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating app:", error);
       toast.error("Failed to update app");
     }
@@ -285,7 +290,7 @@ export default function SocialBlocker() {
         )
       );
       toast.success(`${app?.name} will be blocked ${newMode === "always" ? "always" : "only during focus mode"}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating block mode:", error);
       toast.error("Failed to update block mode");
     }
@@ -321,32 +326,19 @@ export default function SocialBlocker() {
       setFocusModeActive(true);
       setTimeRemaining(duration * 60); // Convert minutes to seconds
       
-      // Sync with extension - store in localStorage for content script to pick up
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        localStorage.setItem('focussphere_sync', JSON.stringify({
-          userId: user.id,
-          focusMode: true,
-          timestamp: Date.now()
-        }));
-        // Try to send message to extension if possible
-        try {
-          chrome.runtime.sendMessage({ action: 'setUserId', userId: user.id });
-          chrome.runtime.sendMessage({ action: 'setFocusMode', active: true });
-          chrome.runtime.sendMessage({ action: 'sync' });
-        } catch (e) {
-          console.log('Extension messaging not available');
-        }
-      } else {
-        // Store in localStorage for extension to pick up
-        localStorage.setItem('focussphere_sync', JSON.stringify({
-          userId: user.id,
-          focusMode: true,
-          timestamp: Date.now()
-        }));
-      }
+      // Sync with extension using helper
+      syncWithExtensionHelper(user.id, true, session?.access_token);
+      
+      // Also store in localStorage
+      localStorage.setItem('focussphere_sync', JSON.stringify({
+        userId: user.id,
+        accessToken: session?.access_token,
+        focusMode: true,
+        timestamp: Date.now()
+      }));
       
       toast.success(`Focus Mode activated! ${blockedCount} apps blocked for ${duration} minutes`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error starting focus mode:", error);
       toast.error("Failed to start focus mode");
     }
@@ -362,21 +354,12 @@ export default function SocialBlocker() {
     setActiveSessionId(null);
     
     // Sync with extension
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
+    syncWithExtensionHelper(user?.id || '', false, session?.access_token);
+    
+    if (user) {
       localStorage.setItem('focussphere_sync', JSON.stringify({
-        userId: user?.id,
-        focusMode: false,
-        timestamp: Date.now()
-      }));
-      try {
-        chrome.runtime.sendMessage({ action: 'setFocusMode', active: false });
-        chrome.runtime.sendMessage({ action: 'sync' });
-      } catch (e) {
-        console.log('Extension messaging not available');
-      }
-    } else {
-      localStorage.setItem('focussphere_sync', JSON.stringify({
-        userId: user?.id,
+        userId: user.id,
+        accessToken: session?.access_token,
         focusMode: false,
         timestamp: Date.now()
       }));
@@ -397,34 +380,26 @@ export default function SocialBlocker() {
       return;
     }
 
-    // Check if extension is installed
-    if (typeof chrome === 'undefined' || !chrome.runtime) {
-      toast.info('Install the browser extension to block websites. See instructions below.');
-      return;
-    }
-
     try {
-      // Try to get extension ID from storage or use a known ID
-      // For now, we'll try to send to any installed extension that listens
-      // The extension needs to be configured with externally_connectable
-      
       // Store sync data in localStorage for content script to pick up
       localStorage.setItem('focussphere_sync', JSON.stringify({
         userId: user.id,
+        accessToken: session?.access_token,
         focusMode: focusModeActive,
         timestamp: Date.now()
       }));
 
-      // Try to send message to extension via external messaging
-      try {
-        // The extension should be listening via onMessageExternal
-        // But we need the extension ID, so we'll use the content script approach
-        toast.success('Sync data stored! Click "Sync with App" in the extension popup to sync.');
-      } catch (e) {
-        toast.info('Click "Sync with App" in the extension popup to sync your blocked sites.');
+      // Use helper to push data
+      const result = await syncWithExtensionHelper(user.id, focusModeActive, session?.access_token);
+      
+      if (result.success) {
+        toast.success('Sync signal sent to extension. Check extension popup.');
+      } else {
+        toast.info('Sync signal sent. Please check extension.');
       }
-    } catch (error: any) {
-      toast.error('Failed to sync with extension: ' + error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast.error('Failed to sync: ' + errorMessage);
     }
   };
 

@@ -45,6 +45,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 if (user && user.id) {
                   userData = userData || {};
                   userData.userId = user.id;
+                  userData.accessToken = auth.access_token || auth.currentSession?.access_token || auth.session?.access_token;
                   break;
                 }
               } catch (e) {
@@ -75,6 +76,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ syncData: null, error: error.message });
     }
     return true;
+  }
+});
+
+// Listen for messages from the web app
+window.addEventListener('message', (event) => {
+  // We only accept messages from ourselves
+  if (event.source !== window) return;
+
+  if (event.data.type && (event.data.type === 'FOCUS_SPHERE_SYNC')) {
+    chrome.runtime.sendMessage(event.data.payload);
   }
 });
 

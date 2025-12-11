@@ -7,6 +7,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let blockedDomains = new Set();
 let focusModeActive = false;
 let userId = null;
+let accessToken = null;
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -18,7 +19,8 @@ chrome.runtime.onInstalled.addListener(() => {
     getUserDataFromWebApp().then((userData) => {
       if (userData && userData.userId) {
         userId = userData.userId;
-        chrome.storage.local.set({ userId });
+        accessToken = userData.accessToken || null;
+        chrome.storage.local.set({ userId, accessToken });
         syncFromSupabase();
       }
     });
@@ -31,7 +33,8 @@ chrome.runtime.onStartup.addListener(() => {
     getUserDataFromWebApp().then((userData) => {
       if (userData && userData.userId) {
         userId = userData.userId;
-        chrome.storage.local.set({ userId });
+        accessToken = userData.accessToken || null;
+        chrome.storage.local.set({ userId, accessToken });
         syncFromSupabase();
       }
     });
@@ -42,8 +45,9 @@ chrome.runtime.onStartup.addListener(() => {
 async function loadBlockedSites() {
   try {
     // First, try to get user ID from storage
-    const result = await chrome.storage.local.get(['userId', 'blockedSites', 'focusMode']);
+    const result = await chrome.storage.local.get(['userId', 'accessToken', 'blockedSites', 'focusMode']);
     userId = result.userId;
+    accessToken = result.accessToken;
     focusModeActive = result.focusMode || false;
 
     if (userId) {
@@ -69,7 +73,7 @@ async function checkFocusModeStatus() {
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${SUPABASE_ANON_KEY}`,
         }
       }
     );
@@ -96,9 +100,11 @@ async function checkFocusModeStatus() {
 // Sync blocked sites from Supabase
 async function syncFromSupabase() {
   if (!userId) {
-    console.log('No user ID, cannot sync');
+    console.log('[FocusSphere] No user ID, cannot sync');
     return;
   }
+
+  console.log('[FocusSphere] Starting sync. UserId:', userId, 'Has Token:', !!accessToken);
 
   try {
     // First check focus mode status
@@ -112,7 +118,7 @@ async function syncFromSupabase() {
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${SUPABASE_ANON_KEY}`,
         }
       }
     );
@@ -135,15 +141,19 @@ async function syncFromSupabase() {
       // Cache the domains
       await chrome.storage.local.set({ blockedSites: Array.from(blockedDomains) });
       
-      console.log(`Synced ${blockedDomains.size} blocked domains. Focus mode: ${focusModeActive}`);
+      console.log(`[FocusSphere] Synced ${blockedDomains.size} blocked domains.`);
+      console.log(`[FocusSphere] Focus mode: ${focusModeActive}`);
+      console.log(`[FocusSphere] Domains list:`, Array.from(blockedDomains));
       
       // Update blocking rules
       await updateBlockingRules();
     } else {
-      console.error('Failed to fetch blocked apps:', response.status, response.statusText);
+      console.error('[FocusSphere] Failed to fetch blocked apps:', response.status, response.statusText);
+      const text = await response.text();
+      console.error('[FocusSphere] Response body:', text);
     }
   } catch (error) {
-    console.error('Error syncing from Supabase:', error);
+    console.error('[FocusSphere] Error syncing from Supabase:', error);
   }
 }
 
@@ -202,7 +212,8 @@ async function updateBlockingRules() {
     let ruleId = 1;
 
     for (const domain of blockedDomains) {
-      // Block main domain
+      // Use ||domain urlFilter which blocks the domain and all subdomains
+      // e.g. ||youtube.com blocks youtube.com, www.youtube.com, m.youtube.com
       rules.push({
         id: ruleId++,
         priority: 1,
@@ -213,23 +224,7 @@ async function updateBlockingRules() {
           }
         },
         condition: {
-          urlFilter: `*://${domain}/*`,
-          resourceTypes: ['main_frame']
-        }
-      });
-
-      // Block www subdomain
-      rules.push({
-        id: ruleId++,
-        priority: 1,
-        action: {
-          type: 'redirect',
-          redirect: {
-            url: chrome.runtime.getURL(`blocked.html?site=${encodeURIComponent(domain)}`)
-          }
-        },
-        condition: {
-          urlFilter: `*://www.${domain}/*`,
+          urlFilter: `||${domain}`,
           resourceTypes: ['main_frame']
         }
       });
@@ -240,10 +235,13 @@ async function updateBlockingRules() {
       await chrome.declarativeNetRequest.updateDynamicRules({
         addRules: rules
       });
-      console.log(`Updated ${rules.length} blocking rules`);
+      console.log(`[FocusSphere] Updated ${rules.length} blocking rules via declarativeNetRequest`);
+      console.log(`[FocusSphere] Rule content sample:`, rules[0]);
+    } else {
+       console.log(`[FocusSphere] No rules to add (blockedDomains empty or no match)`);
     }
   } catch (error) {
-    console.error('Error updating blocking rules:', error);
+    console.error('[FocusSphere] Error updating blocking rules:', error);
   }
 }
 
@@ -253,11 +251,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
   if (request.action === 'sync') {
     // If no userId, try to get it from the web app
-    if (!userId) {
+     if (!userId) {
       getUserDataFromWebApp().then((userData) => {
         if (userData && userData.userId) {
           userId = userData.userId;
-          chrome.storage.local.set({ userId });
+          accessToken = userData.accessToken || null;
+          chrome.storage.local.set({ userId, accessToken });
           syncFromSupabase().then(() => {
             sendResponse({ success: true });
           }).catch((error) => {
@@ -279,7 +278,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     if (request.action === 'setUserId') {
       userId = request.userId;
-      chrome.storage.local.set({ userId });
+      if (request.accessToken) {
+        accessToken = request.accessToken;
+        chrome.storage.local.set({ userId, accessToken });
+      } else {
+        chrome.storage.local.set({ userId });
+      }
       syncFromSupabase().then(() => {
         sendResponse({ success: true });
       }).catch((error) => {
@@ -322,7 +326,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // These come from the web app
       if (request.action === 'externalSetUserId') {
         userId = request.userId;
-        chrome.storage.local.set({ userId });
+        if (request.accessToken) accessToken = request.accessToken;
+        chrome.storage.local.set({ userId, accessToken });
       } else if (request.action === 'externalSetFocusMode') {
         focusModeActive = request.active;
         chrome.storage.local.set({ focusMode: focusModeActive });
@@ -344,7 +349,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Allow external messaging from the web app
 chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
   // Allow localhost for development
-  const allowedOrigins = ['http://localhost:8080', 'http://127.0.0.1:8080'];
+  const allowedOrigins = [
+    'http://localhost:8080', 
+    'http://127.0.0.1:8080',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+  ];
   if (!allowedOrigins.some(origin => sender.origin.startsWith(origin))) {
     sendResponse({ success: false, error: 'Unauthorized origin' });
     return false;
@@ -362,7 +372,8 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
 
     if (request.action === 'setUserId') {
       userId = request.userId;
-      chrome.storage.local.set({ userId });
+      if (request.accessToken) accessToken = request.accessToken;
+      chrome.storage.local.set({ userId, accessToken });
       syncFromSupabase().then(() => {
         sendResponse({ success: true });
       }).catch((error) => {
@@ -394,7 +405,8 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
 // Get user data from web app via content script
 async function getUserDataFromWebApp() {
   try {
-    const tabs = await chrome.tabs.query({ url: ['http://localhost:8080/*', 'http://127.0.0.1:8080/*'] });
+    // Query all tabs to find the app (more robust than checking specific URLs)
+    const tabs = await chrome.tabs.query({});
     
     for (const tab of tabs) {
       try {
@@ -439,7 +451,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       getUserDataFromWebApp().then((userData) => {
         if (userData && userData.userId) {
           userId = userData.userId;
-          chrome.storage.local.set({ userId });
+          accessToken = userData.accessToken || null;
+          chrome.storage.local.set({ userId, accessToken });
           syncFromSupabase();
         }
       });
