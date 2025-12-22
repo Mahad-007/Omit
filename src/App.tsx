@@ -18,6 +18,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Blocked from "./pages/Blocked";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/blocked" element={<Blocked />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               
               {/* Protected routes */}
               <Route
